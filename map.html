@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>台北飲料店地圖</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>台北飲料店地圖</h2>
+    <label for="day-select">選擇日期:</label>
+    <select id="day-select">
+        <option value="wednesday">週三</option>
+        <option value="saturday">週六</option>
+    </select>
+    <label for="time-select">選擇時間:</label>
+    <input type="range" id="time-select" min="0" max="23" step="1" value="0">
+    <span id="time-display">0:00</span>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+    document.getElementById('time-select').addEventListener('input', function() {
+        document.getElementById('time-display').innerText = this.value + ":00";
+        updateMap();
+    });
+
+    document.getElementById('day-select').addEventListener('change', function() {
+        updateMap();
+    });
+
+    // 初始化地圖
+    var map = L.map('map').setView([25.0330, 121.5654], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var markers = [];
+
+    d3.csv('milkshop_data.csv').then(function(data) {
+        window.milkshopData = data;
+        updateMap();
+    });
+
+    function updateMap() {
+        var day = document.getElementById('day-select').value;
+        var hour = parseInt(document.getElementById('time-select').value);
+
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+
+        window.milkshopData.forEach(function(d) {
+            var show = (hour >= parseInt(d.time_mor) && hour < parseInt(d.time_nig));
+            if (show) {
+                var color = getColor(day, hour, d);
+                var marker = L.circleMarker([d.lati, d.longi], {
+                    radius: 8,
+                    fillColor: color,
+                    color: color,
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup(d.search_word);
+                markers.push(marker);
+            }
+        });
+    }
+
+    function getColor(day, hour, d) {
+        var value;
+        if (day === 'wednesday') {
+            var columns = ['six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty_one', 'twenty_two', 'twenty_three'];
+            value = d[columns[hour - 6]]; // 假設six代表早上6點
+        } else {
+            var columns = ['s_six', 's_seven', 's_eight', 's_nine', 's_ten', 's_eleven', 's_twelve', 's_thirteen', 's_fourteen', 's_fifteen', 's_sixteen', 's_seventeen', 's_eighteen', 's_nineteen', 's_twenty', 's_twenty_one', 's_twenty_two', 's_twenty_three'];
+            value = d[columns[hour - 6]]; // 假設s_six代表週六早上6點
+        }
+        var grayscale = 255 - (value * 2.55); // 0~100轉換為0~255
+        return `rgb(${grayscale}, ${grayscale}, ${grayscale})`;
+    }
+    </script>
+</body>
+
+</html>
